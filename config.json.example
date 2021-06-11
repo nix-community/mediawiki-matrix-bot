@@ -1,0 +1,8 @@
+{
+    "mxid": "@botname:servername",
+    "server": "https://servername",
+    "password": "my-voice-is-my-password",
+    "room": "!roomid:servername.net",
+    "baseurl": "https://mediawiki.example",
+    "timeout": 60
+}
