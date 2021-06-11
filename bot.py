@@ -27,7 +27,7 @@ def color(text,color):
 def bold(text):
     return f"<b>{text}</b>"
 
-def format_data(obj,udpinput=False):
+def format_data(obj,baseurl,udpinput=False,):
     """ udpinput: set to True if the input arrived via UDP and not via HTTP
     """
     print(obj)
@@ -40,6 +40,12 @@ def format_data(obj,udpinput=False):
         new_length = obj.get('length',{}).get('new',None)
         is_patrolled = obj['patrolled']
         is_bot = obj['bot']
+        is_minor = obj['minor']
+        log_type = obj.get('log_type',None)
+        log_action = obj.get('log_action',None)
+        baseurl = f"{obj['server_url']}{obj['server_script_path']}"
+        log_action_comment = obj.get('log_action_comment','')
+
     else:
         newrev = obj['revid']
         oldrev = obj['old_revid']
@@ -47,13 +53,20 @@ def format_data(obj,udpinput=False):
         old_length = obj.get('oldlen',None)
         new_length = obj.get('newlen',None)
         is_patrolled = False # does not work with http (need elevated permissions)
-        is_bot = False # does not provide the info
+        is_bot = hasattr(obj,'bot') # do not know if this even works
+        is_minor = hasattr(obj,'minor')
+        log_type = obj.get('logtype',None)
+        log_action = obj.get('logaction',None)
+        log_action_comment = obj['comment']
+        baseurl = f"{baseurl}/wiki"
+
+        #  'logtype': 'move', 'logaction': 'move', 'logparams': {'target_ns': 0, 'target_title': 'Sandbox', 'suppressredirect': ''}},
 
     if  typ == "log":
-        title = f"Special:Log/{obj['log_type'].capitalize()}"
+        title = f"Special:Log/{log_type.capitalize()}"
         url = ""
-        flag = obj['log_action']
-        comment = obj['log_action_comment']
+        flag = log_action
+        comment = log_action_comment
     else:
         title = obj['title']
         comment = obj['comment']
@@ -66,13 +79,13 @@ def format_data(obj,udpinput=False):
         else:
             query = f"?diff={newrev}&oldid={oldrev}"
 
-        if obj['minor']:
+        if is_minor:
             flag += "M"
 
         if is_bot:
             flag += "B"
 
-        url = f"{obj['server_url']}{obj['server_script_path']}/index.php{query}"
+        url = f"{baseurl}/index.php{query}"
 
     if old_length is not None and new_length is not None:
         diff_length = new_length - old_length
@@ -94,57 +107,57 @@ def format_data(obj,udpinput=False):
         f" {bold(diff_length)} {color(comment,'cyan')}"
 
 
-async def forward_news(client, room, message_obj):
+async def forward_news(client, room, message_obj,baseurl):
     if not client:
         raise Exception("matrix_client must be set")
-    html_message = format_data(message_obj)
-    print(html_message)
+    html_message = format_data(message_obj,baseurl)
+    print("Sending message to {room}: {html_message}")
     await client.room_send(
         room,
         message_type="m.room.message",
         content={
             "body": "message",
             "format": "org.matrix.custom.html",
-            "formatted_body":html_message,
+            "formatted_body": html_message,
             "msgtype": "m.notice",
             }
         )
 
-async def read_state(statepath = "state.json" ) -> dict:
-    try:
-        async with aiof.open(statepath, 'r+') as f:
-            return json.loads( await f.read()) # contains 'seen': [ seen_id1, seen_id2]
-    except:
-        print(f"Cannot load contents of {statepath} as json object, falling back to empty")
-        return { "seen": [] } # we start with an empty object
 
-async def write_state(state,statepath = "state.json"):
-    async with aiof.open(statepath, 'w+') as f:
-        await f.write( json.dumps(state))
-
-
-async def fetch_changes():
+async def fetch_changes(baseurl):
     async with aiohttp.ClientSession() as session:
-        #|patrolled
-        async with session.get('https://nixos.wiki/api.php?action=query&list=recentchanges&format=json&rcprop=user|comment|flags|title|sizes|loginfo|ids|revision') as response:
+        async with session.get(f'{baseurl}/api.php?action=query&list=recentchanges&format=json&rcprop=user|comment|flags|title|sizes|loginfo|ids|revision') as response:
             return await response.json()
 
-def get_new_rcs(rcs,state):
+def get_new_rcs(rcs,last_rc):
     for rc in rcs:
-        if rc['rcid'] not in state['seen']:
+        if rc['rcid'] > last_rc:
             yield rc
 
-async def check_recent_changes(client,room):
+async def check_recent_changes(client,room,baseurl,timeout):
+    # initial fetch of the last recent change, there is no state handling here,
+    # we do not re-notify changes in case the bot is offline
+    print("Fetching last changes initially")
+    resp = await fetch_changes(baseurl)
+    last_rc = resp['query']['recentchanges'][0]['rcid']
+
+    print(f"The last rc is {last_rc}")
+
     while True:
         print("check recent changes")
-        resp = await fetch_changes()
+        resp = await fetch_changes(baseurl)
         rcs = resp['query']['recentchanges']
-        print(rcs)
-        state = await read_state()
-        new_rcs = get_new_rcs(rcs,state)
+        new_rcs = list(filter(lambda x: x['rcid'] > last_rc,rcs))
+
+        if not new_rcs:
+            print("no new changes")
+
         for rc in new_rcs:
-            await forward_news(client,room,rc)
-        await asyncio.sleep(10)
+            await forward_news(client,room,rc,baseurl)
+
+        last_rc = rcs[0]['rcid'] # update last rc
+        print(f"sleeping for {timeout}")
+        await asyncio.sleep(timeout)
 
 async def main():
     args = docopt(__doc__)
@@ -160,12 +173,7 @@ async def main():
     print(await client.login(config["password"]))
     print("create listener")
 
-    #transport, protocol = await loop.create_datagram_endpoint(
-    #    lambda: RCForwarder(client,config["room"]),
-    #    local_addr=('0.0.0.0', 5006))
-
-    # with that we run check_recent_changes and sync_forever in parallel
-    asyncio.create_task(check_recent_changes(client,config['room']))
+    asyncio.create_task(check_recent_changes(client,config['room'],config['baseurl'],config.get('timeout',60)))
     await client.sync_forever(timeout=30000)
 
 
