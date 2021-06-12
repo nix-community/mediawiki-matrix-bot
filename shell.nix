@@ -1,5 +1,10 @@
 { pkgs ? import <nixpkgs> {}}:
 
 pkgs.mkShell {
-  nativeBuildInputs = with pkgs.python3Packages; [  feedparser matrix-nio docopt aiohttp aiofiles];
+  buildInputs = with pkgs.python3Packages; [
+    feedparser matrix-nio docopt aiohttp aiofiles
+  ];
+  nativeBuildInputs = with pkgs.python3Packages; [
+    mypy
+  ];
 }

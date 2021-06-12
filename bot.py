@@ -4,6 +4,7 @@
 import asyncio
 import aiohttp
 import aiofiles as aiof
+from typing import Any, Dict, Iterator, Awaitable
 
 from docopt import docopt
 from nio import AsyncClient
@@ -21,13 +22,13 @@ import feedparser
 		#	"\00302$url\003 \0035*\003 \00303$user\003 \0035*\003 $szdiff \00310$comment\003\n";
 #' Send a single feed item in one room in the RSS bot format
 
-def color(text,color):
+def color(text: str, color: str) -> str:
     return f"<font color={color}>{text}</font>"
 
-def bold(text):
+def bold(text: str) -> str:
     return f"<b>{text}</b>"
 
-def format_data(obj,baseurl,udpinput=False,):
+def format_data(obj: Dict[str, Any], baseurl: str, udpinput: bool = False) -> str:
     """ udpinput: set to True if the input arrived via UDP and not via HTTP
     """
     print(obj)
@@ -107,7 +108,7 @@ def format_data(obj,baseurl,udpinput=False,):
         f" {bold(diff_length)} {color(comment,'cyan')}"
 
 
-async def forward_news(client, room, message_obj,baseurl):
+async def forward_news(client: AsyncClient, room: str, message_obj: Dict[str, Any],baseurl: str) -> None:
     if not client:
         raise Exception("matrix_client must be set")
     html_message = format_data(message_obj,baseurl)
@@ -124,17 +125,12 @@ async def forward_news(client, room, message_obj,baseurl):
         )
 
 
-async def fetch_changes(baseurl):
+async def fetch_changes(baseurl: str) -> Any:
     async with aiohttp.ClientSession() as session:
         async with session.get(f'{baseurl}/api.php?action=query&list=recentchanges&format=json&rcprop=user|comment|flags|title|sizes|loginfo|ids|revision') as response:
             return await response.json()
 
-def get_new_rcs(rcs,last_rc):
-    for rc in rcs:
-        if rc['rcid'] > last_rc:
-            yield rc
-
-async def check_recent_changes(client,room,baseurl,timeout):
+async def check_recent_changes(client: AsyncClient, room: str, baseurl: str, timeout: int) -> None:
     # initial fetch of the last recent change, there is no state handling here,
     # we do not re-notify changes in case the bot is offline
     print("Fetching last changes initially")
@@ -159,7 +155,7 @@ async def check_recent_changes(client,room,baseurl,timeout):
         print(f"sleeping for {timeout}")
         await asyncio.sleep(timeout)
 
-async def main():
+async def main() -> None:
     args = docopt(__doc__)
     #Load config
     config = args['CONFIG']
