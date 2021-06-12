@@ -1,8 +1,7 @@
 # mediawiki-matrix-bot
 
 
-A Bot which publishes mediawiki Recent Changes (coming from the /api.php`
-endpoint ) to a matrix room.
+A Bot which publishes mediawiki Recent Changes from the [`/api.php` endpoint](https://nixos.wiki/api.php?action=help&modules=query%2Brecentchanges) to a matrix room.
 
 ## License
 MIT
