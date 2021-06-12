@@ -7,8 +7,8 @@ A Bot which publishes mediawiki Recent Changes from the [`/api.php` endpoint](ht
 ## Development
 
 ```
-$ nix-shell 
-$ python bot.py config.json
+$ nix-build
+$ ./result/bin/mediawiki-matrix-bot config.json
 ```
 
 ## License
