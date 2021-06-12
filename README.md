@@ -8,7 +8,7 @@ A Bot which publishes mediawiki Recent Changes from the [`/api.php` endpoint](ht
 
 ```
 $ nix-shell 
-$ pythoin bot.py config.json
+$ python bot.py config.json
 ```
 
 ## License
