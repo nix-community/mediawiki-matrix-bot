@@ -10,17 +10,20 @@ from docopt import docopt
 from nio import AsyncClient
 import aiohttp
 
-from pprint import pprint
 import json
 import feedparser
-# from the original source: https://github.com/wikimedia/mediawiki/blob/master/includes/rcfeed/IRCColourfulRCFeedFormatter.php
-		## see http://www.irssi.org/documentation/formats for some colour codes. prefix is \003,
-		## no colour (\003) switches back to the term default
 
+import logging
+
+log = logging.getLogger("bot")
+logging.basicConfig(level=logging.INFO)
+
+# from the original source: https://github.com/wikimedia/mediawiki/blob/master/includes/rcfeed/IRCColourfulRCFeedFormatter.php
+## see http://www.irssi.org/documentation/formats for some colour codes. prefix is \003,
+## no colour (\003) switches back to the term default
 # $titleString = "\00314[[\00307$title\00314]]";
-		#$fullString = "$titleString\0034 $flag\00310 " .
-		#	"\00302$url\003 \0035*\003 \00303$user\003 \0035*\003 $szdiff \00310$comment\003\n";
-#' Send a single feed item in one room in the RSS bot format
+#$fullString = "$titleString\0034 $flag\00310 " .
+#	"\00302$url\003 \0035*\003 \00303$user\003 \0035*\003 $szdiff \00310$comment\003\n";
 
 def color(text: str, color: str) -> str:
     return f"<font color={color}>{text}</font>"
@@ -31,7 +34,7 @@ def bold(text: str) -> str:
 def format_data(obj: Dict[str, Any], baseurl: str, udpinput: bool = False) -> str:
     """ udpinput: set to True if the input arrived via UDP and not via HTTP
     """
-    print(obj)
+    log.debug(obj)
     typ = obj['type']
     if udpinput:
         newrev = obj['revision']['new']
@@ -112,7 +115,7 @@ async def forward_news(client: AsyncClient, room: str, message_obj: Dict[str, An
     if not client:
         raise Exception("matrix_client must be set")
     html_message = format_data(message_obj,baseurl)
-    print("Sending message to {room}: {html_message}")
+    log.info(f"Sending message to {room}: {html_message}")
     await client.room_send(
         room,
         message_type="m.room.message",
@@ -133,26 +136,26 @@ async def fetch_changes(baseurl: str) -> Any:
 async def check_recent_changes(client: AsyncClient, room: str, baseurl: str, timeout: int) -> None:
     # initial fetch of the last recent change, there is no state handling here,
     # we do not re-notify changes in case the bot is offline
-    print("Fetching last changes initially")
+    log.info("Fetching last changes initially")
     resp = await fetch_changes(baseurl)
     last_rc = resp['query']['recentchanges'][0]['rcid']
 
-    print(f"The last rc is {last_rc}")
+    log.info(f"The last rc is {last_rc}")
 
     while True:
-        print("check recent changes")
+        log.info("check recent changes")
         resp = await fetch_changes(baseurl)
         rcs = resp['query']['recentchanges']
         new_rcs = list(filter(lambda x: x['rcid'] > last_rc,rcs))
 
         if not new_rcs:
-            print("no new changes")
+            log.info("no new changes")
 
         for rc in new_rcs:
             await forward_news(client,room,rc,baseurl)
 
         last_rc = rcs[0]['rcid'] # update last rc
-        print(f"sleeping for {timeout}")
+        log.info(f"sleeping for {timeout}")
         await asyncio.sleep(timeout)
 
 async def main() -> None:
@@ -164,15 +167,13 @@ async def main() -> None:
         config = json.load(config_file)
 
     #Login
-    print("login")
+    log.info(f'login to server {config["server"]} as {config["mxid"]}')
     client = AsyncClient(config["server"], config["mxid"])
-    print(await client.login(config["password"]))
-    print("create listener")
+    log.info(await client.login(config["password"]))
+    log.info("create listener")
 
     asyncio.create_task(check_recent_changes(client,config['room'],config['baseurl'],config.get('timeout',60)))
     await client.sync_forever(timeout=30000)
-
-
 
 
 
