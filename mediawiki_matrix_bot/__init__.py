@@ -103,7 +103,7 @@ def format_data(obj: Dict[str, Any], baseurl: str, udpinput: bool = False) -> st
 
     return  color('[[','gray') + bold(color(title,'yellow')) + color(']]','gray')  + \
          " " + color(flag,'red') + \
-        f" <a href={url}>{url}</a> {color('*','red')}"  + \
+        f" {url} {color('*','red')}"  + \
         f" {color(user,'lightgreen')} {color('*','red')}" + \
         f" {bold(diff_length)} {color(comment,'cyan')}"
 
