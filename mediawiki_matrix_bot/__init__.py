@@ -104,11 +104,11 @@ def format_data(obj: Dict[str, Any], baseurl: str, udpinput: bool = False) -> st
     user = obj['user']
 
 
-    return  color('[[','gray') + bold(color(title,'yellow')) + color(']]','gray')  + \
+    return  color('[[ ','gray') + bold(color(title,'green')) + color(' ]]','gray')  + \
          " " + color(flag,'red') + \
         f" {url} {color('*','red')}"  + \
-        f" {color(user,'lightgreen')} {color('*','red')}" + \
-        f" {bold(diff_length)} {color(comment,'cyan')}"
+        f" {color(user,'yellow')} {color('*','red')}" + \
+        f" {color(diff_length, 'green')} {comment)}"
 
 
 async def forward_news(client: AsyncClient, room: str, message_obj: Dict[str, Any],baseurl: str) -> None:
