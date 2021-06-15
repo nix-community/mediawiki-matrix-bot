@@ -108,7 +108,7 @@ def format_data(obj: Dict[str, Any], baseurl: str, udpinput: bool = False) -> st
          " " + color(flag,'red') + \
         f" {url} {color('*','red')}"  + \
         f" {color(user,'yellow')} {color('*','red')}" + \
-        f" {color(diff_length, 'green')} {comment)}"
+        f" {color(diff_length, 'green')} {comment}"
 
 
 async def forward_news(client: AsyncClient, room: str, message_obj: Dict[str, Any],baseurl: str) -> None:
@@ -180,4 +180,3 @@ async def main() -> None:
 
 #asyncio.get_event_loop().run_until_complete(main())
 asyncio.run(main())
-
