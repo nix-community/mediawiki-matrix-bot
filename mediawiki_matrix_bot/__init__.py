@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO)
 #	"\00302$url\003 \0035*\003 \00303$user\003 \0035*\003 $szdiff \00310$comment\003\n";
 
 def color(text: str, color: str) -> str:
-    return f"<font color={color}>{text}</font>"
+    return f'<font color="{color}">{text}</font>'
 
 def bold(text: str) -> str:
     return f"<b>{text}</b>"
@@ -104,11 +104,11 @@ def format_data(obj: Dict[str, Any], baseurl: str, udpinput: bool = False) -> st
     user = obj['user']
 
 
-    return  color('[[','gray') + bold(color(title,'yellow')) + color(']]','gray')  + \
-         " " + color(flag,'red') + \
-        f" {url} {color('*','red')}"  + \
-        f" {color(user,'lightgreen')} {color('*','red')}" + \
-        f" {bold(diff_length)} {color(comment,'cyan')}"
+    return  color('[[','#7F7F7F') + bold(color(title,'#FC7F00')) + color(']]','#7F7F7F')  + \
+         " " + color(flag,'#FF0000') + \
+        f" {url} {color('*','#7F0000')}"  + \
+        f" {color(user,'#009300')} {color('*','#7F0000')}" + \
+        f" {bold(diff_length)} {color(comment,'#009393')}"
 
 
 async def forward_news(client: AsyncClient, room: str, message_obj: Dict[str, Any],baseurl: str) -> None:
