@@ -95,7 +95,7 @@ def format_data(obj: Dict[str, Any], baseurl: str, udpinput: bool = False) -> st
         diff_length = new_length - old_length
         if diff_length < -500:
             diff_length = bold(diff_length) # make large removes bold
-        else:
+        elif diff_length > 0:
             diff_length = f"+{diff_length}" # add plus sign to additions
         diff_length = f"({diff_length})"
     else:
