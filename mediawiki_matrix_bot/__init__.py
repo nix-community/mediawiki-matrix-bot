@@ -5,6 +5,8 @@ import asyncio
 import aiohttp
 import aiofiles as aiof
 from typing import Any, Dict, Iterator, Awaitable
+from io import StringIO
+from html.parser import HTMLParser
 
 from docopt import docopt
 from nio import AsyncClient
@@ -17,6 +19,25 @@ import logging
 
 log = logging.getLogger("bot")
 logging.basicConfig(level=logging.INFO)
+
+class MLStripper(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.reset()
+        self.strict = False
+        self.convert_charrefs= True
+        self.text = StringIO()
+
+    def handle_data(self, d: str) -> None:
+        self.text.write(d)
+
+    def get_data(self) -> str:
+        return self.text.getvalue()
+
+def strip_tags(html: str) -> str:
+    s = MLStripper()
+    s.feed(html)
+    return s.get_data()
 
 # from the original source: https://github.com/wikimedia/mediawiki/blob/master/includes/rcfeed/IRCColourfulRCFeedFormatter.php
 ## see http://www.irssi.org/documentation/formats for some colour codes. prefix is \003,
@@ -120,7 +141,8 @@ async def forward_news(client: AsyncClient, room: str, message_obj: Dict[str, An
         room,
         message_type="m.room.message",
         content={
-            "body": "message",
+            # fallback for clients not supporting html
+            "body": strip_tags(html_message),
             "format": "org.matrix.custom.html",
             "formatted_body": html_message,
             "msgtype": "m.notice",
