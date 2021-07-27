@@ -14,6 +14,7 @@ import aiohttp
 
 import json
 import feedparser
+import sys
 
 import logging
 
@@ -159,14 +160,24 @@ async def check_recent_changes(client: AsyncClient, room: str, baseurl: str, tim
     # initial fetch of the last recent change, there is no state handling here,
     # we do not re-notify changes in case the bot is offline
     log.info("Fetching last changes initially")
-    resp = await fetch_changes(baseurl)
+    try:
+        resp = await fetch_changes(baseurl)
+    except Exception as e:
+        log.error("Something went wrong when fetching the the first change from the wiki:")
+        log.error(e)
+        sys.exit(1)
     last_rc = resp['query']['recentchanges'][0]['rcid']
 
     log.info(f"The last rc is {last_rc}")
 
     while True:
         log.info("check recent changes")
-        resp = await fetch_changes(baseurl)
+        try:
+            resp = await fetch_changes(baseurl)
+        except Exception as e:
+            log.error("Something went wrong when fetching the latest changes from the wiki:")
+            log.error(e)
+            sys.exit(1)
         rcs = resp['query']['recentchanges']
         new_rcs = list(filter(lambda x: x['rcid'] > last_rc,rcs))
 
@@ -174,7 +185,12 @@ async def check_recent_changes(client: AsyncClient, room: str, baseurl: str, tim
             log.info("no new changes")
 
         for rc in new_rcs:
-            await forward_news(client,room,rc,baseurl)
+            try:
+                await forward_news(client,room,rc,baseurl)
+            except Exception as e:
+                log.error("Something went wrong when forwarding the news")
+                log.error(e)
+                sys.exit(1)
 
         last_rc = rcs[0]['rcid'] # update last rc
         log.info(f"sleeping for {timeout}")
@@ -195,11 +211,16 @@ async def main() -> None:
     log.info("create listener")
 
     asyncio.create_task(check_recent_changes(client,config['room'],config['baseurl'],config.get('timeout',60)))
-    await client.sync_forever(timeout=30000)
+    try:
+        await client.sync_forever(timeout=30000)
+    except Exception as e:
+        log.error("Something went wrong when sycing with matrix server")
+        log.error(e)
+        sys.exit(1)
 
 
 
 
 #asyncio.get_event_loop().run_until_complete(main())
-asyncio.run(main())
+sys.exit(asyncio.run(main()))
 
