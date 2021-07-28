@@ -7,6 +7,7 @@ import aiofiles as aiof
 from typing import Any, Dict, Iterator, Awaitable
 from io import StringIO
 from html.parser import HTMLParser
+from contextlib import contextmanager
 
 from docopt import docopt
 from nio import AsyncClient
@@ -39,6 +40,17 @@ def strip_tags(html: str) -> str:
     s = MLStripper()
     s.feed(html)
     return s.get_data()
+
+
+@contextmanager
+def die_on_exception(context: str) -> Iterator[None]:
+    try:
+        yield
+    except Exception as e:
+        log.error(f"{context}:")
+        log.error(e)
+        sys.exit(1)
+
 
 # from the original source: https://github.com/wikimedia/mediawiki/blob/master/includes/rcfeed/IRCColourfulRCFeedFormatter.php
 ## see http://www.irssi.org/documentation/formats for some colour codes. prefix is \003,
@@ -160,24 +172,16 @@ async def check_recent_changes(client: AsyncClient, room: str, baseurl: str, tim
     # initial fetch of the last recent change, there is no state handling here,
     # we do not re-notify changes in case the bot is offline
     log.info("Fetching last changes initially")
-    try:
+    with die_on_exception("Something went wrong when fetching the the first change from the wiki"):
         resp = await fetch_changes(baseurl)
-    except Exception as e:
-        log.error("Something went wrong when fetching the the first change from the wiki:")
-        log.error(e)
-        sys.exit(1)
     last_rc = resp['query']['recentchanges'][0]['rcid']
 
     log.info(f"The last rc is {last_rc}")
 
     while True:
         log.info("check recent changes")
-        try:
+        with die_on_exception("Something went wrong when fetching the latest changes from the wiki"):
             resp = await fetch_changes(baseurl)
-        except Exception as e:
-            log.error("Something went wrong when fetching the latest changes from the wiki:")
-            log.error(e)
-            sys.exit(1)
         rcs = resp['query']['recentchanges']
         new_rcs = list(filter(lambda x: x['rcid'] > last_rc,rcs))
 
@@ -185,12 +189,8 @@ async def check_recent_changes(client: AsyncClient, room: str, baseurl: str, tim
             log.info("no new changes")
 
         for rc in new_rcs:
-            try:
-                await forward_news(client,room,rc,baseurl)
-            except Exception as e:
-                log.error("Something went wrong when forwarding the news")
-                log.error(e)
-                sys.exit(1)
+            with die_on_exception("Something went wrong when forwarding the news"):
+                await forward_news(client, room, rc, baseurl)
 
         last_rc = rcs[0]['rcid'] # update last rc
         log.info(f"sleeping for {timeout}")
@@ -212,11 +212,8 @@ async def main() -> None:
 
     asyncio.create_task(check_recent_changes(client,config['room'],config['baseurl'],config.get('timeout',60)))
     try:
+    with die_on_exception("Something went wrong when sycing with matrix server"):
         await client.sync_forever(timeout=30000)
-    except Exception as e:
-        log.error("Something went wrong when sycing with matrix server")
-        log.error(e)
-        sys.exit(1)
 
 
 
