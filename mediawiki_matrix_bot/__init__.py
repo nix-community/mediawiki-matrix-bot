@@ -173,16 +173,16 @@ async def forward_news(
     )
 
 
-async def fetch_changes(baseurl: str) -> Any:
+async def fetch_changes(baseurl: str, api_path: str = "/api.php") -> Any:
     async with aiohttp.ClientSession() as session:
         async with session.get(
-            f"{baseurl}/api.php?action=query&list=recentchanges&format=json&rcprop=user|comment|flags|title|sizes|loginfo|ids|revision"
+            f"{baseurl}{api_path}?action=query&list=recentchanges&format=json&rcprop=user|comment|flags|title|sizes|loginfo|ids|revision"
         ) as response:
             return await response.json()
 
 
 async def check_recent_changes(
-    client: AsyncClient, room: str, baseurl: str, timeout: int
+        client: AsyncClient, room: str, baseurl: str, api_path:str, timeout: int
 ) -> None:
     # initial fetch of the last recent change, there is no state handling here,
     # we do not re-notify changes in case the bot is offline
@@ -196,7 +196,7 @@ async def check_recent_changes(
     while True:
         log.info("check recent changes")
         with die_on_exception("Something went wrong when fetching the latest changes from the wiki"):
-            resp = await fetch_changes(baseurl)
+            resp = await fetch_changes(baseurl, api_path)
         rcs = resp["query"]["recentchanges"]
         new_rcs = list(filter(lambda x: x["rcid"] > last_rc, rcs))
 
@@ -228,7 +228,7 @@ async def main() -> None:
 
     asyncio.create_task(
         check_recent_changes(
-            client, config["room"], config["baseurl"], config.get("timeout", 60)
+            client, config["room"], config["baseurl"], config.get("api_path","/api.php"), config.get("timeout", 60)
         )
     )
     with die_on_exception("Something went wrong when sycing with matrix server"):
