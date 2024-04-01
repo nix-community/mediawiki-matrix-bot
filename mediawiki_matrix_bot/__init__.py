@@ -182,13 +182,13 @@ async def fetch_changes(baseurl: str, api_path: str = "/api.php") -> Any:
 
 
 async def check_recent_changes(
-        client: AsyncClient, room: str, baseurl: str, api_path:str, timeout: int
+        client: AsyncClient, room: str, baseurl: str, api_path: str, timeout: int
 ) -> None:
     # initial fetch of the last recent change, there is no state handling here,
     # we do not re-notify changes in case the bot is offline
     log.info("Fetching last changes initially")
     with die_on_exception("Something went wrong when fetching the the first change from the wiki"):
-        resp = await fetch_changes(baseurl)
+        resp = await fetch_changes(baseurl, api_path)
     last_rc = resp["query"]["recentchanges"][0]["rcid"]
 
     log.info(f"The last rc is {last_rc}")
