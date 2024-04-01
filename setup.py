@@ -6,7 +6,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="mediawiki-matrix-bot",
-    version="1.0.0",
+    version="1.1.0",
     description="Matrix bot that publishes mediawiki recent changes",
     author="makefu",
     author_email="github@syntax-fehler.de",
