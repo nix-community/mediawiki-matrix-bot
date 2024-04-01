@@ -2,7 +2,7 @@
 
 pkgs.python3Packages.buildPythonApplication {
   pname = "mediawiki-matrix-bot";
-  version = "1.0.0";
+  version = "1.1.0";
   src = ./.;
   propagatedBuildInputs = with pkgs.python3Packages; [
     feedparser matrix-nio docopt aiohttp aiofiles

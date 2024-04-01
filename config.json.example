@@ -4,5 +4,6 @@
     "password": "my-voice-is-my-password",
     "room": "!roomid:servername.net",
     "baseurl": "https://mediawiki.example",
+    "api_path": "/api.php",
     "timeout": 60
 }
